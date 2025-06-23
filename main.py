@@ -1,9 +1,12 @@
 import torch
+import torch.nn.functional as F
 import os
 import numpy as np
 from PIL import Image
 
 
+batch_size = 20
+n_hidden = 200
 target_size = (64, 64)
 target_format = 'L'
 
@@ -37,19 +40,19 @@ def load_dataset(dataset_path, target_size):
     y = torch.tensor(y)
     return x, y, labels
 
-x, y, labels = load_dataset('data_set', target_size)
+X, Y, labels = load_dataset('data_set', target_size)
 
-n_hidden = 200
 
-x = x.view(x.shape[0], -1)
+
+X = X.view(X.shape[0], -1)
 
 # layer 1
-w1 = torch.randn(64*64, n_hidden)
-b1 = torch.randn(n_hidden)
+w1 = torch.randn(64*64, n_hidden) * 0.1
+b1 = torch.randn(n_hidden) * 0
 
 # layer 2
-w2 = torch.randn(n_hidden, n_hidden//2)
-b2 = torch.randn(n_hidden//2)
+w2 = torch.randn(n_hidden, n_hidden//2) * 0.1
+b2 = torch.randn(n_hidden//2) * 0
 
 # layer 3
 w3 = torch.randn(n_hidden//2, len(labels))
@@ -58,25 +61,31 @@ parameters = [w1]+[b1]+[w2]+[b2]+[w3]
 for p in parameters:
     p.requires_grad = True
 
-# forward pass
-x = x @ w1 + b1
-x = x @ w2 + b2
-logits = x @ w3
+lr = 0.001
+n_iter = 10000
+for i in range(n_iter):
 
-probs = logits / torch.sum(logits, 1, keepdim=True)
+    batch = torch.randint(0, X.shape[0], (batch_size,))
+    x = X[batch]
+    y = Y[batch]
 
-loss = -probs[range(0, probs.shape[0]), y].log().mean()
+    # forward pass
+    x = x @ w1 + b1
+    x = x @ w2 + b2
 
-# backward pass
-for p in parameters:
-    p.grad = None
-loss.backward()
+    logits = x @ w3
+    probs = torch.softmax(logits, dim=1)
 
-# update
-lr = 0.1
-for p in parameters:
-    p.data -= lr * p.grad
+    # loss = -probs[range(0, probs.shape[0]), y].log().mean()
+    loss = F.cross_entropy(logits, y)
 
+    # backward pass
+    for p in parameters:
+        p.grad = None
+    loss.backward()
 
-print(loss)
+    # update
+    for p in parameters:
+        p.data += -lr * p.grad
 
+    print(loss)
