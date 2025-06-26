@@ -1,22 +1,23 @@
 import torch
 import torch.nn.functional as F
+import torch.nn as nn
 import os
 import numpy as np
 from PIL import Image
 
-batch_size = 200
-n_hidden = 200
-target_size = (64, 64)
+batch_size = 20
+n_hidden = 100
+target_size = (128, 128)
 target_format = 'L'
 dataset_path = 'data_set'
 
-def process_img(path):
+def process_img(path, target_size):
     img = Image.open(path).convert(target_format)
     img = img.resize(target_size)
     img = np.array(img) / 255.0
     return img
 
-def load_dataset(dataset_path, target_size):
+def load_dataset(dataset_path):
     x = []
     y = []
     labels = []
@@ -26,45 +27,40 @@ def load_dataset(dataset_path, target_size):
         person_dir = os.path.join(dataset_path, person_name)
         if not os.path.isdir(person_dir):
             continue
-
         labels.append(person_name)
 
         for filename in os.listdir(person_dir):
             file_path = os.path.join(person_dir, filename)
 
-            img = process_img(file_path)
+            img = process_img(file_path, target_size)
 
             x.append(img)
             y.append(current_label)
-
         current_label += 1
 
     x = torch.tensor(np.array(x), dtype=torch.float32)
     y = torch.tensor(y)
     return x, y, labels
 
-data, targets, labels = load_dataset('data_set', target_size)
+data, targets, labels = load_dataset('data_set')
 
 data = data.view(data.shape[0], -1)
 
-class Model:
+class Model(nn.Module):
     def __init__(self):
-        self.w1 = torch.randn(64*64, n_hidden) * 0.1
-        self.b1 = torch.randn(n_hidden) * 0
-        self.w2 = torch.randn(n_hidden, n_hidden//2) * 0.1
-        self.b2 = torch.randn(n_hidden//2) * 0
-        self.w3 = torch.randn(n_hidden//2, len(labels))
+        super().__init__()
+        self.fc = nn.Sequential(nn.Linear(128*128, n_hidden),
+                                nn.Tanh(),
+                                nn.Linear(n_hidden, n_hidden//2),
+                                nn.BatchNorm1d(n_hidden//2),
+                                nn.Tanh(),
+                                )
+        self.classifier = nn.Linear(n_hidden//2, len(labels), bias=False)
 
-        parameters = [self.w1] + [self.w2] + [self.w3] + [self.b1] + [self.b2]
-        for p in parameters:
-            p.requires_grad = True
-
-
-    def __call__(self, x, y=None):
-        x = torch.tanh(x @ self.w1 + self.b1)
-        x = torch.tanh(x @ self.w2 + self.b2)
+    def forward(self, x, y=None):
+        x = self.fc(x)
         embeddings = x
-        logits = x @ self.w3
+        logits = self.classifier(x)
 
         if y is not None:
             # loss = -probs[range(0, probs.shape[0]), y].log().mean()
@@ -73,34 +69,32 @@ class Model:
         else:
             return embeddings
 
-    def parameters(self):
-        return [self.w1]+[self.b1]+[self.w2]+[self.b2]+[self.w3]
+    def _train(self, n_iter, lr):
+        self.train()
+        optim = torch.optim.AdamW(m.parameters(), lr)
+        for i in range(n_iter):
+            batch = torch.randint(0, data.shape[0], (batch_size,))
+            x = data[batch]
+            y = targets[batch]
+
+            # forward pass
+            loss, embeddings = m(x, y)
+
+            # backward pass
+            optim.zero_grad()
+            loss.backward()
+
+            # update
+            optim.step()
+
+            print(loss)
+        self.eval()
 
 m = Model()
-
-# lr = 0.01
-# n_iter = 1000
-# for i in range(n_iter):
-#
-#     batch = torch.randint(0, data.shape[0], (batch_size,))
-#     x = data[batch]
-#     y = targets[batch]
-#
-#     loss, embeddings = m(x, y)
-#
-#     # backward pass
-#     for p in m.parameters():
-#         p.grad = None
-#     loss.backward()
-#
-#     # update
-#     for p in m.parameters():
-#         p.data += -lr * p.grad
-#
-#     print(loss)
+m._train(1000, 0.01)
 
 def get_embedding(pic):
-    img = process_img(pic)
+    img = process_img(pic, target_size)
     img = torch.tensor(img, dtype=torch.float32)
     img = img.view(-1)
     img = torch.stack((img,), dim=0)
@@ -123,7 +117,7 @@ def store_embeddings(path):
 
     return embeddings
 
-known_embeddings = store_embeddings('data_set')
+known_embeddings = store_embeddings('test/register')
 
 
 def recognize(pic):
@@ -132,20 +126,12 @@ def recognize(pic):
 
     img_embedding = get_embedding(pic)
     for name, embedding in known_embeddings.items():
-        distance = torch.norm(img_embedding, embedding)
+        distance = torch.norm(img_embedding - embedding)
         if distance < best_distance:
             best_distance = distance
             best_match = name
 
     return best_match
 
-
-
-
-
-
-
-
-
-
+print(recognize('test/test_faces/Ahmed.jpg'))
 
