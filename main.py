@@ -5,16 +5,22 @@ import os
 import numpy as np
 from PIL import Image
 
-batch_size = 20
-n_hidden = 100
+# CONVOLUTIONAL LAYER FORMULA: [(in−K+2P)/S]+1
+
+batch_size = 32
+n_hidden = 200
 target_size = (128, 128)
-target_format = 'L'
+target_format = 'RGB'
 dataset_path = 'data_set'
 
 def process_img(path, target_size):
     img = Image.open(path).convert(target_format)
     img = img.resize(target_size)
     img = np.array(img) / 255.0
+    img = torch.tensor(img, dtype=torch.float32)
+    if target_format == 'L':
+        img = torch.stack((img,), dim=2)
+    img = img.permute(2, 0, 1).contiguous()
     return img
 
 def load_dataset(dataset_path):
@@ -37,27 +43,37 @@ def load_dataset(dataset_path):
             x.append(img)
             y.append(current_label)
         current_label += 1
-
     x = torch.tensor(np.array(x), dtype=torch.float32)
     y = torch.tensor(y)
     return x, y, labels
 
 data, targets, labels = load_dataset('data_set')
 
-data = data.view(data.shape[0], -1)
-
 class Model(nn.Module):
     def __init__(self):
         super().__init__()
-        self.fc = nn.Sequential(nn.Linear(128*128, n_hidden),
-                                nn.Tanh(),
+        self.conv = nn.Conv2d(3, 3, 3, 1)
+
+        self.fc = nn.Sequential(nn.Linear(47628, n_hidden),
+                                nn.ReLU(),
                                 nn.Linear(n_hidden, n_hidden//2),
-                                nn.BatchNorm1d(n_hidden//2),
-                                nn.Tanh(),
+                                nn.LayerNorm(n_hidden//2),
+                                nn.ReLU(),
+                                nn.Linear(n_hidden // 2, n_hidden // 2),
+                                nn.LayerNorm(n_hidden // 2),
+                                nn.ReLU()
                                 )
         self.classifier = nn.Linear(n_hidden//2, len(labels), bias=False)
 
+        for layer in self.fc:
+            if isinstance(layer, nn.Linear):
+                layer.bias.data.zero_()
+                layer.weight.data *= 0.1
+
     def forward(self, x, y=None):
+        x = self.conv(x)
+        A, B, C, D = x.shape
+        x = x.reshape(A, -1)
         x = self.fc(x)
         embeddings = x
         logits = self.classifier(x)
@@ -91,12 +107,11 @@ class Model(nn.Module):
         self.eval()
 
 m = Model()
-m._train(1000, 0.01)
+m._train(1000, 1e-3)
+print(sum(p.numel() for p in m.parameters()))
 
 def get_embedding(pic):
     img = process_img(pic, target_size)
-    img = torch.tensor(img, dtype=torch.float32)
-    img = img.view(-1)
     img = torch.stack((img,), dim=0)
     img_embedding = m(img)
     img_embedding = img_embedding.squeeze(0)
@@ -104,6 +119,7 @@ def get_embedding(pic):
 
 
 def store_embeddings(path):
+    m.eval()
     embeddings = {}
 
     for person_name in sorted(os.listdir(path)):
@@ -121,6 +137,7 @@ known_embeddings = store_embeddings('test/register')
 
 
 def recognize(pic):
+    m.eval()
     best_match = None
     best_distance = float('inf')
 
@@ -133,5 +150,4 @@ def recognize(pic):
 
     return best_match
 
-print(recognize('test/test_faces/Ahmed.jpg'))
-
+print(recognize('test/test_faces/Hatshepsut.jpg'))
