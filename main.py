@@ -10,7 +10,7 @@ from PIL import Image
 batch_size = 32
 n_hidden = 200
 target_size = (128, 128)
-target_format = 'RGB'
+target_format = 'L'
 dataset_path = 'data_set'
 
 def process_img(path, target_size):
@@ -52,18 +52,25 @@ data, targets, labels = load_dataset('data_set')
 class Model(nn.Module):
     def __init__(self):
         super().__init__()
-        self.conv = nn.Conv2d(3, 3, 3, 1)
+        self.conv = nn.Sequential(nn.Conv2d(1, 5, 3, 2),
+                                  nn.ReLU(),
+                                  nn.Conv2d(5, 3, 2, 2),
+                                  nn.ReLU(),
+                                  nn.Conv2d(3, 1, 3, 1),
+                                  nn.ReLU())
 
-        self.fc = nn.Sequential(nn.Linear(47628, n_hidden),
+        self.projection = nn.Conv2d(1, 1, 15, 4, 1)
+
+        self.fc = nn.Sequential(nn.Linear(841, n_hidden),
                                 nn.ReLU(),
-                                nn.Linear(n_hidden, n_hidden//2),
-                                nn.LayerNorm(n_hidden//2),
-                                nn.ReLU(),
-                                nn.Linear(n_hidden // 2, n_hidden // 2),
+                                # nn.Linear(n_hidden, n_hidden//2),
+                                # nn.LayerNorm(n_hidden//2),
+                                # nn.ReLU(),
+                                nn.Linear(n_hidden, n_hidden // 2),
                                 nn.LayerNorm(n_hidden // 2),
                                 nn.ReLU()
                                 )
-        self.classifier = nn.Linear(n_hidden//2, len(labels), bias=False)
+        self.classifier = nn.Linear(n_hidden // 2, len(labels), bias=False)
 
         for layer in self.fc:
             if isinstance(layer, nn.Linear):
@@ -71,7 +78,10 @@ class Model(nn.Module):
                 layer.weight.data *= 0.1
 
     def forward(self, x, y=None):
+        iden = x
         x = self.conv(x)
+        iden = self.projection(iden)
+        x = x + iden
         A, B, C, D = x.shape
         x = x.reshape(A, -1)
         x = self.fc(x)
@@ -107,8 +117,8 @@ class Model(nn.Module):
         self.eval()
 
 m = Model()
-m._train(1000, 1e-3)
 print(sum(p.numel() for p in m.parameters()))
+m._train(10000, 1e-3)
 
 def get_embedding(pic):
     img = process_img(pic, target_size)
@@ -140,6 +150,7 @@ def recognize(pic):
     m.eval()
     best_match = None
     best_distance = float('inf')
+    threshold = 0.5
 
     img_embedding = get_embedding(pic)
     for name, embedding in known_embeddings.items():
@@ -147,7 +158,8 @@ def recognize(pic):
         if distance < best_distance:
             best_distance = distance
             best_match = name
-
+    if best_distance > threshold:
+        best_match = 'Unknown'
     return best_match
 
 print(recognize('test/test_faces/Hatshepsut.jpg'))
