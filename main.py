@@ -4,23 +4,22 @@ import torch.nn as nn
 import os
 import numpy as np
 from PIL import Image
+from facenet_pytorch import MTCNN
 
 # CONVOLUTIONAL LAYER FORMULA: [(in−K+2P)/S]+1
 
 batch_size = 32
 n_hidden = 200
 target_size = (128, 128)
-target_format = 'L'
+target_format = 'RGB'
 dataset_path = 'data_set'
+mtcnn = MTCNN(image_size=128)
 
-def process_img(path, target_size):
+def process_img(path):
     img = Image.open(path).convert(target_format)
-    img = img.resize(target_size)
-    img = np.array(img) / 255.0
-    img = torch.tensor(img, dtype=torch.float32)
-    if target_format == 'L':
-        img = torch.stack((img,), dim=2)
-    img = img.permute(2, 0, 1).contiguous()
+    img = mtcnn(img)
+    if img is not None:
+        print(img.shape)
     return img
 
 def load_dataset(dataset_path):
@@ -38,7 +37,9 @@ def load_dataset(dataset_path):
         for filename in os.listdir(person_dir):
             file_path = os.path.join(person_dir, filename)
 
-            img = process_img(file_path, target_size)
+            img = process_img(file_path)
+            if img is None:
+                continue
 
             x.append(img)
             y.append(current_label)
@@ -48,18 +49,18 @@ def load_dataset(dataset_path):
     return x, y, labels
 
 data, targets, labels = load_dataset('data_set')
-
+print(data.shape)
 class Model(nn.Module):
     def __init__(self):
         super().__init__()
-        self.conv = nn.Sequential(nn.Conv2d(1, 5, 3, 2),
+        self.conv = nn.Sequential(nn.Conv2d(3, 5, 3, 2),
                                   nn.ReLU(),
                                   nn.Conv2d(5, 3, 2, 2),
                                   nn.ReLU(),
                                   nn.Conv2d(3, 1, 3, 1),
                                   nn.ReLU())
 
-        self.projection = nn.Conv2d(1, 1, 15, 4, 1)
+        self.projection = nn.Conv2d(3, 1, 15, 4, 1)
 
         self.fc = nn.Sequential(nn.Linear(841, n_hidden),
                                 nn.ReLU(),
@@ -68,7 +69,6 @@ class Model(nn.Module):
                                 # nn.ReLU(),
                                 nn.Linear(n_hidden, n_hidden // 2),
                                 nn.LayerNorm(n_hidden // 2),
-                                nn.ReLU()
                                 )
         self.classifier = nn.Linear(n_hidden // 2, len(labels), bias=False)
 
@@ -118,10 +118,12 @@ class Model(nn.Module):
 
 m = Model()
 print(sum(p.numel() for p in m.parameters()))
-m._train(10000, 1e-3)
+m._train(1000, 1e-3)
 
 def get_embedding(pic):
-    img = process_img(pic, target_size)
+    img = process_img(pic)
+    if img is None:
+        return None
     img = torch.stack((img,), dim=0)
     img_embedding = m(img)
     img_embedding = img_embedding.squeeze(0)
@@ -139,8 +141,11 @@ def store_embeddings(path):
 
         filename = os.listdir(person_dir)[0]
         pic = os.path.join(person_dir, filename)
-        embeddings[person_name] = get_embedding(pic)
-
+        img_embedding = get_embedding(pic)
+        if img_embedding is None:
+            continue
+        else:
+            embeddings[person_name] = img_embedding
     return embeddings
 
 known_embeddings = store_embeddings('test/register')
@@ -153,6 +158,8 @@ def recognize(pic):
     threshold = 0.5
 
     img_embedding = get_embedding(pic)
+    if img_embedding is None:
+        return 'Couldn\'t recognize the picture'
     for name, embedding in known_embeddings.items():
         distance = torch.norm(img_embedding - embedding)
         if distance < best_distance:
@@ -162,4 +169,4 @@ def recognize(pic):
         best_match = 'Unknown'
     return best_match
 
-print(recognize('test/test_faces/Hatshepsut.jpg'))
+print(recognize('test/test_faces/Ahmed.jpg'))
