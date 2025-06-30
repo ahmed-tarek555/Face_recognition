@@ -19,7 +19,8 @@ def process_img(path):
     img = Image.open(path).convert(target_format)
     img = mtcnn(img)
     if img is not None:
-        print(img.shape)
+        print(f'Image loaded of shape {img.shape}')
+
     return img
 
 def load_dataset(dataset_path):
@@ -47,9 +48,21 @@ def load_dataset(dataset_path):
     x = torch.tensor(np.array(x), dtype=torch.float32)
     y = torch.tensor(y)
     return x, y, labels
+data, targets, labels = load_dataset('train')
 
-data, targets, labels = load_dataset('data_set')
-print(data.shape)
+
+with torch.no_grad():
+    def eval_loss(path):
+        m.eval()
+        embeddings1 = store_embeddings(path, 0)
+        embeddings2 = store_embeddings(path, 1)
+        embeddings = list(zip(embeddings1.values(), embeddings2.values()))
+        distances = []
+        for emb1, emb2 in embeddings:
+            distances.append(torch.norm(emb1 - emb2))
+        loss = sum(distances) / len(distances)
+        return loss
+
 class Model(nn.Module):
     def __init__(self):
         super().__init__()
@@ -118,7 +131,7 @@ class Model(nn.Module):
 
 m = Model()
 print(sum(p.numel() for p in m.parameters()))
-m._train(1000, 1e-3)
+m._train(100, 1e-3)
 
 def get_embedding(pic):
     img = process_img(pic)
@@ -130,7 +143,7 @@ def get_embedding(pic):
     return img_embedding
 
 
-def store_embeddings(path):
+def store_embeddings(path, pic_index):
     m.eval()
     embeddings = {}
 
@@ -139,7 +152,7 @@ def store_embeddings(path):
         if not os.path.isdir(person_dir):
             continue
 
-        filename = os.listdir(person_dir)[0]
+        filename = os.listdir(person_dir)[pic_index]
         pic = os.path.join(person_dir, filename)
         img_embedding = get_embedding(pic)
         if img_embedding is None:
@@ -148,7 +161,7 @@ def store_embeddings(path):
             embeddings[person_name] = img_embedding
     return embeddings
 
-known_embeddings = store_embeddings('test/register')
+known_embeddings = store_embeddings('test/register', 0)
 
 
 def recognize(pic):
@@ -159,7 +172,7 @@ def recognize(pic):
 
     img_embedding = get_embedding(pic)
     if img_embedding is None:
-        return 'Couldn\'t recognize the picture'
+        return "Couldn't recognize a face"
     for name, embedding in known_embeddings.items():
         distance = torch.norm(img_embedding - embedding)
         if distance < best_distance:
@@ -168,5 +181,7 @@ def recognize(pic):
     if best_distance > threshold:
         best_match = 'Unknown'
     return best_match
+
+print(f'eval loss is {eval_loss('eval')}')
 
 print(recognize('test/test_faces/Ahmed.jpg'))
