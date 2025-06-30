@@ -38,18 +38,17 @@ def load_dataset(dataset_path):
         for filename in os.listdir(person_dir):
             file_path = os.path.join(person_dir, filename)
 
-            img = process_img(file_path)
-            if img is None:
-                continue
+            img = torch.load(file_path, weights_only=False)
 
             x.append(img)
             y.append(current_label)
         current_label += 1
-    x = torch.tensor(np.array(x), dtype=torch.float32)
+    x = torch.stack(x)
     y = torch.tensor(y)
     return x, y, labels
-data, targets, labels = load_dataset('train')
-
+data, targets, labels = load_dataset('processed_train_dataset')
+# 17384
+print(data.shape)
 
 with torch.no_grad():
     def eval_loss(path):
@@ -131,7 +130,7 @@ class Model(nn.Module):
 
 m = Model()
 print(sum(p.numel() for p in m.parameters()))
-m._train(100, 1e-3)
+m._train(10000, 1e-3)
 
 def get_embedding(pic):
     img = process_img(pic)
@@ -168,11 +167,11 @@ def recognize(pic):
     m.eval()
     best_match = None
     best_distance = float('inf')
-    threshold = 0.5
+    threshold = 0.6
 
     img_embedding = get_embedding(pic)
     if img_embedding is None:
-        return "Couldn't recognize a face"
+        return "Couldn't detect a face"
     for name, embedding in known_embeddings.items():
         distance = torch.norm(img_embedding - embedding)
         if distance < best_distance:
