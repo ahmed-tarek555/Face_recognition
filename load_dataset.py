@@ -1,8 +1,6 @@
 import torch
-
 from facenet_pytorch import MTCNN
 from PIL import Image
-import torch
 import os
 
 target_format = 'RGB'
@@ -33,4 +31,4 @@ def preprocess_and_save(raw_dir, save_dir):
                 torch.save(face, save_path)
     print('Done')
 
-preprocess_and_save('train', 'processed_train_dataset')
+# preprocess_and_save('train', 'processed_train_dataset')

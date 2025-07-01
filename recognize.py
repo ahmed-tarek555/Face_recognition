@@ -1,10 +1,9 @@
 import torch
 import torch.nn.functional as F
-import torch.nn as nn
 import os
 from PIL import Image
 from facenet_pytorch import MTCNN
-from main.py import Model
+from model import Model
 
 batch_size = 32
 n_hidden = 200
@@ -12,7 +11,23 @@ target_size = (128, 128)
 target_format = 'RGB'
 dataset_path = 'data_set'
 mtcnn = MTCNN(image_size=128)
-m = Model()
+m = Model(105)
+
+
+def load_known_embeddings(path):
+    known_embeddings = {}
+    for person_name in sorted(os.listdir(path)):
+        person_dir = os.path.join(path, person_name)
+        if not os.path.isdir(person_dir):
+            continue
+        files = sorted(os.listdir(person_dir))
+        file = files[0]
+        file_path = os.path.join(person_dir, file)
+        embedding = torch.load(file_path, weights_only=False)
+        known_embeddings[person_name] = embedding
+    return known_embeddings
+
+known_embeddings = load_known_embeddings('known_embeddings')
 
 def process_img(path):
     img = Image.open(path).convert(target_format)
@@ -50,5 +65,5 @@ def recognize(pic):
     return best_match
 
 img = os.listdir('test/test_faces/being_tested')[0]
-
-print(recognize(f'test/test_faces/being_tested/{img}'))
+best_match = recognize(f'test/test_faces/being_tested/{img}')
+print(f'This person is {best_match}')

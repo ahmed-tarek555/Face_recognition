@@ -59,9 +59,9 @@ class Model(nn.Module):
         else:
             return embeddings
 
-    def _train(self, n_iter, lr):
+    def _train(self, data, targets, n_iter, lr):
         self.train()
-        optim = torch.optim.AdamW(m.parameters(), lr)
+        optim = torch.optim.AdamW(self.parameters(), lr)
         for i in range(n_iter):
             batch = torch.randint(0, data.shape[0], (batch_size,))
             x = data[batch]
@@ -80,44 +80,23 @@ class Model(nn.Module):
             print(loss)
         self.eval()
 
+if __name__ == "__main__":
+    m = Model(105)
+
 def process_img(path):
     img = Image.open(path).convert(target_format)
     img = mtcnn(img)
     if img is not None:
         print(f'Image loaded of shape {img.shape}')
-
     return img
-def load_dataset(dataset_path):
-    x = []
-    y = []
-    labels = []
-    current_label = 0
-
-    for person_name in sorted(os.listdir(dataset_path)):
-        person_dir = os.path.join(dataset_path, person_name)
-        if not os.path.isdir(person_dir):
-            continue
-        labels.append(person_name)
-
-        for filename in os.listdir(person_dir):
-            file_path = os.path.join(person_dir, filename)
-
-            img = torch.load(file_path, weights_only=False)
-
-            x.append(img)
-            y.append(current_label)
-        current_label += 1
-    x = torch.stack(x)
-    y = torch.tensor(y)
-    return x, y, labels
 
 with torch.no_grad():
     def eval_loss(path):
         m.eval()
+        distances = []
         embeddings1 = store_embeddings(path, 0)
         embeddings2 = store_embeddings(path, 1)
         embeddings = list(zip(embeddings1.values(), embeddings2.values()))
-        distances = []
         for emb1, emb2 in embeddings:
             distances.append(torch.norm(emb1 - emb2))
         loss = sum(distances) / len(distances)
@@ -151,29 +130,8 @@ def store_embeddings(path, pic_index):
             embeddings[person_name] = img_embedding
     return embeddings
 
-# def recognize(pic):
-#     m.eval()
-#     best_match = None
-#     best_distance = float('inf')
-#     threshold = 0.6
-#
-#     img_embedding = get_embedding(pic)
-#     if img_embedding is None:
-#         return "Couldn't detect a face"
-#     for name, embedding in known_embeddings.items():
-#         distance = torch.norm(img_embedding - embedding)
-#         if distance < best_distance:
-#             best_distance = distance
-#             best_match = name
-#     if best_distance > threshold:
-#         best_match = 'Unknown'
-#     return best_match
-
 def main():
-    data, targets, labels = load_dataset('processed_train_dataset')
-    m = Model(len(labels))
     print(sum(p.numel() for p in m.parameters()))
-    m._train(10000, 1e-3)
     print(f'eval loss is {eval_loss("eval")}')
 
 if __name__ == "__main__":
