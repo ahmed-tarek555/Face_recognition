@@ -12,6 +12,7 @@ target_format = 'RGB'
 dataset_path = 'data_set'
 mtcnn = MTCNN(image_size=128)
 m = Model(105)
+m.load_state_dict(torch.load('parameters.pth'))
 
 
 def load_known_embeddings(path):
@@ -50,18 +51,19 @@ def recognize(pic):
     m.eval()
     best_match = None
     best_distance = float('inf')
-    threshold = 0.6
+    threshold = 2
 
     img_embedding = get_embedding(pic)
     if img_embedding is None:
         return "Couldn't detect a face"
     for name, embedding in known_embeddings.items():
         distance = torch.norm(img_embedding - embedding)
+        print(distance)
         if distance < best_distance:
             best_distance = distance
             best_match = name
-    if best_distance > threshold:
-        best_match = 'Unknown'
+    # if best_distance > threshold:
+    #     best_match = 'Unknown'
     return best_match
 
 img = os.listdir('test/test_faces/being_tested')[0]

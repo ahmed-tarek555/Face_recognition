@@ -1,7 +1,6 @@
 import os
 import torch
 import torch.nn.functional as F
-import torch.nn as nn
 from PIL import Image
 from model import Model
 from facenet_pytorch import MTCNN
@@ -9,6 +8,7 @@ from facenet_pytorch import MTCNN
 target_format = 'RGB'
 mtcnn = MTCNN(image_size=128)
 m = Model(105)
+m.load_state_dict(torch.load('parameters.pth'))
 
 def process_img(path):
     img = Image.open(path).convert(target_format)

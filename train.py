@@ -1,8 +1,5 @@
 import torch
-import torch.nn.functional as F
-import torch.nn as nn
 import os
-from PIL import Image
 from facenet_pytorch import MTCNN
 from model import Model
 
@@ -41,4 +38,8 @@ data, targets, labels = load_dataset('processed_train_dataset')
 
 m = Model(len(labels))
 
-m._train(data, targets, 10,  1e-3)
+m._train(data, targets, 10000,  1e-3)
+
+path = 'parameters.pth'
+
+torch.save(m.state_dict(), path)

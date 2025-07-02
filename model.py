@@ -11,28 +11,31 @@ batch_size = 32
 n_hidden = 200
 target_size = (128, 128)
 target_format = 'RGB'
-dataset_path = 'data_set'
 mtcnn = MTCNN(image_size=128)
+
+def conv_block(in_channels, out_channels, kernel_size, stride=1, padding=0):
+    return nn.Sequential(nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding),
+                         nn.BatchNorm2d(out_channels),
+                         nn.ReLU())
 
 class Model(nn.Module):
     def __init__(self, n_out):
         super().__init__()
-        self.conv = nn.Sequential(nn.Conv2d(3, 5, 3, 2),
-                                  nn.ReLU(),
-                                  nn.Conv2d(5, 3, 2, 2),
-                                  nn.ReLU(),
-                                  nn.Conv2d(3, 1, 3, 1),
-                                  nn.ReLU())
+        self.conv = nn.Sequential(conv_block(3, 32, 3, 1),
+                                  conv_block(32, 64, 3, 2),
+                                  conv_block(64, 128, 3, 2),
+                                  conv_block(128, 256, 3, 2),
+                                  conv_block(256, 512, 3, 2),
+                                  )
 
-        self.projection = nn.Conv2d(3, 1, 15, 4, 1)
+        self.projection = nn.Sequential(nn.Conv2d(3, 512, 1, 1),
+                                        nn.AdaptiveAvgPool2d((6, 6)),
+                                        )
 
-        self.fc = nn.Sequential(nn.Linear(841, n_hidden),
+        self.fc = nn.Sequential(nn.Linear(512*6*6, n_hidden),
+                                nn.BatchNorm1d(n_hidden),
                                 nn.ReLU(),
                                 nn.Linear(n_hidden, n_hidden // 2),
-                                nn.LayerNorm(n_hidden // 2),
-                                nn.ReLU(),
-                                nn.Linear(n_hidden // 2, n_hidden // 2),
-                                nn.LayerNorm(n_hidden // 2),
                                 )
         self.classifier = nn.Linear(n_hidden // 2, n_out, bias=False)
 
@@ -62,6 +65,7 @@ class Model(nn.Module):
     def _train(self, data, targets, n_iter, lr):
         self.train()
         optim = torch.optim.AdamW(self.parameters(), lr)
+        current_iter = 0
         for i in range(n_iter):
             batch = torch.randint(0, data.shape[0], (batch_size,))
             x = data[batch]
@@ -73,15 +77,19 @@ class Model(nn.Module):
             # backward pass
             optim.zero_grad()
             loss.backward()
+            # print(self.fc[0].weight.grad)
 
             # update
             optim.step()
 
             print(loss)
+            current_iter += 1
+            print(int((current_iter/n_iter)*100))
         self.eval()
 
 if __name__ == "__main__":
     m = Model(105)
+    m.load_state_dict(torch.load('parameters.pth'))
 
 def process_img(path):
     img = Image.open(path).convert(target_format)
@@ -131,8 +139,8 @@ def store_embeddings(path, pic_index):
     return embeddings
 
 def main():
-    print(sum(p.numel() for p in m.parameters()))
-    print(f'eval loss is {eval_loss("eval")}')
+    print(f'Number of parameters is: {sum(p.numel() for p in m.parameters())}')
+    print(f'evaluation loss is {eval_loss("eval")}')
 
 if __name__ == "__main__":
     main()
