@@ -51,7 +51,7 @@ def recognize(pic):
     m.eval()
     best_match = None
     best_distance = float('inf')
-    threshold = 2
+    threshold = 1.2
 
     img_embedding = get_embedding(pic)
     if img_embedding is None:
@@ -62,8 +62,8 @@ def recognize(pic):
         if distance < best_distance:
             best_distance = distance
             best_match = name
-    # if best_distance > threshold:
-    #     best_match = 'Unknown'
+    if best_distance > threshold:
+        best_match = 'Unknown'
     return best_match
 
 img = os.listdir('test/test_faces/being_tested')[0]
