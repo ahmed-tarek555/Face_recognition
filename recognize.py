@@ -58,7 +58,7 @@ def recognize(pic):
         return "Couldn't detect a face"
     for name, embedding in known_embeddings.items():
         distance = torch.norm(img_embedding - embedding)
-        print(distance)
+        print(f'{name}: {distance}')
         if distance < best_distance:
             best_distance = distance
             best_match = name
