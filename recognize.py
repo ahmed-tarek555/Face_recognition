@@ -51,7 +51,7 @@ def recognize(pic):
     m.eval()
     best_match = None
     best_distance = float('inf')
-    threshold = 1.2
+    threshold = 1.25
 
     img_embedding = get_embedding(pic)
     if img_embedding is None:
