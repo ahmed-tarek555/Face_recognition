@@ -51,4 +51,4 @@ def store_embeddings(path, pic_index, save_dir="known_embeddings"):
         torch.save(img_embedding, embedding_file)
         print('Done')
 
-store_embeddings('test/register', 0)
+# store_embeddings('test/register', 0)
