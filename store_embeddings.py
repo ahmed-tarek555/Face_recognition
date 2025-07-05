@@ -45,6 +45,7 @@ def store_embeddings(path, save_dir="known_embeddings"):
                 continue
             embeddings.append(img_embedding)
         ave_embedding = torch.stack(embeddings, dim=0).mean(dim=0, keepdim=False)
+        ave_embedding = F.normalize(ave_embedding, dim=0)
         person_embedding_dir = os.path.join(save_dir, person_name)
         os.makedirs(person_embedding_dir, exist_ok=True)
         embedding_file = os.path.join(person_embedding_dir, f"{person_name}.pt")

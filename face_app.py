@@ -37,7 +37,7 @@ class FaceApp:
         shutil.copy(pic_dir, save_pic_dir)
 
     def register_users(self):
-        store_embeddings('test/register', 0)
+        store_embeddings('test/register')
         self.register_users_button.config(text='Done')
 
     def recognize(self):
