@@ -31,7 +31,10 @@ def load_known_embeddings(path):
 known_embeddings = load_known_embeddings('known_embeddings')
 
 def process_img(path):
-    img = Image.open(path).convert(target_format)
+    if isinstance(path, Image.Image):
+        img = path.convert(target_format)
+    else:
+        img = Image.open(path).convert(target_format)
     img = mtcnn(img)
     if img is not None:
         print(f'Image loaded of shape {img.shape}')
@@ -55,7 +58,7 @@ def recognize(pic):
 
     img_embedding = get_embedding(pic)
     if img_embedding is None:
-        return "Couldn't detect a face"
+        return None
     for name, embedding in known_embeddings.items():
         distance = torch.norm(img_embedding - embedding)
         print(f'{name}: {distance}')
