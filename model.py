@@ -2,8 +2,8 @@ import torch
 import torch.nn.functional as F
 import torch.nn as nn
 import os
-from PIL import Image
 from facenet_pytorch import MTCNN
+from utils import get_embedding
 
 # CONVOLUTIONAL LAYER FORMULA: [(in−K+2P)/S]+1
 
@@ -91,36 +91,21 @@ if __name__ == "__main__":
     m = Model(105)
     m.load_state_dict(torch.load('parameters.pth'))
 
-def process_img(path):
-    img = Image.open(path).convert(target_format)
-    img = mtcnn(img)
-    if img is not None:
-        print(f'Image loaded of shape {img.shape}')
-    return img
 
 with torch.no_grad():
     def eval_loss(path):
         m.eval()
         distances = []
-        embeddings1 = store_embeddings(path, 0)
-        embeddings2 = store_embeddings(path, 1)
+        embeddings1 = get_eval_embeddings(path, 0)
+        embeddings2 = get_eval_embeddings(path, 1)
         embeddings = list(zip(embeddings1.values(), embeddings2.values()))
         for emb1, emb2 in embeddings:
             distances.append(torch.norm(emb1 - emb2))
         loss = sum(distances) / len(distances)
         return loss
 
-def get_embedding(pic):
-    img = process_img(pic)
-    if img is None:
-        return None
-    img = torch.stack((img,), dim=0)
-    img_embedding = m(img)
-    img_embedding = img_embedding.squeeze(0)
-    return F.normalize(img_embedding, dim=0)
 
-
-def store_embeddings(path, pic_index):
+def get_eval_embeddings(path, pic_index):
     m.eval()
     embeddings = {}
 
@@ -131,7 +116,7 @@ def store_embeddings(path, pic_index):
 
         filename = os.listdir(person_dir)[pic_index]
         pic = os.path.join(person_dir, filename)
-        img_embedding = get_embedding(pic)
+        img_embedding = get_embedding(pic, m)
         if img_embedding is None:
             continue
         else:

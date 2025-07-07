@@ -1,8 +1,8 @@
 import os
 import torch
 import torch.nn.functional as F
-from PIL import Image
 from model import Model
+from utils import get_embedding
 from facenet_pytorch import MTCNN
 
 target_format = 'RGB'
@@ -10,22 +10,6 @@ mtcnn = MTCNN(image_size=128)
 m = Model(105)
 m.load_state_dict(torch.load('parameters.pth'))
 
-def process_img(path):
-    img = Image.open(path).convert(target_format)
-    img = mtcnn(img)
-    if img is not None:
-        print(f'Image loaded of shape {img.shape}')
-
-    return img
-
-def get_embedding(pic):
-    img = process_img(pic)
-    if img is None:
-        return None
-    img = torch.stack((img,), dim=0)
-    img_embedding = m(img)
-    img_embedding = img_embedding.squeeze(0)
-    return F.normalize(img_embedding, dim=0)
 
 def store_embeddings(path, save_dir="known_embeddings"):
     m.eval()
@@ -40,7 +24,7 @@ def store_embeddings(path, save_dir="known_embeddings"):
         filenames = sorted(os.listdir(person_dir))
         for filename in filenames:
             pic = os.path.join(person_dir, filename)
-            img_embedding = get_embedding(pic)
+            img_embedding = get_embedding(pic, m)
             if img_embedding is None:
                 continue
             embeddings.append(img_embedding)

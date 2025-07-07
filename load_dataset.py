@@ -1,18 +1,10 @@
 import torch
 from facenet_pytorch import MTCNN
-from PIL import Image
 import os
+from utils import process_img
 
 target_format = 'RGB'
 mtcnn = MTCNN(image_size=128)
-
-def process_img(path):
-    img = Image.open(path).convert(target_format)
-    img = mtcnn(img)
-    if img is not None:
-        print(f'Image loaded of shape {img.shape}')
-
-    return img
 
 def preprocess_and_save(raw_dir, save_dir):
     os.makedirs(save_dir, exist_ok=True)

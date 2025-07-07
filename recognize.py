@@ -1,9 +1,8 @@
 import torch
-import torch.nn.functional as F
 import os
-from PIL import Image
 from facenet_pytorch import MTCNN
 from model import Model
+from utils import get_embedding
 
 batch_size = 32
 n_hidden = 200
@@ -30,25 +29,6 @@ def load_known_embeddings(path):
 
 known_embeddings = load_known_embeddings('known_embeddings')
 
-def process_img(path):
-    if isinstance(path, Image.Image):
-        img = path.convert(target_format)
-    else:
-        img = Image.open(path).convert(target_format)
-    img = mtcnn(img)
-    if img is not None:
-        print(f'Image loaded of shape {img.shape}')
-
-    return img
-
-def get_embedding(pic):
-    img = process_img(pic)
-    if img is None:
-        return None
-    img = torch.stack((img,), dim=0)
-    img_embedding = m(img)
-    img_embedding = img_embedding.squeeze(0)
-    return F.normalize(img_embedding, dim=0)
 
 def recognize(pic):
     m.eval()
@@ -56,7 +36,7 @@ def recognize(pic):
     best_distance = float('inf')
     threshold = 1.25
 
-    img_embedding = get_embedding(pic)
+    img_embedding = get_embedding(pic, m)
     if img_embedding is None:
         return None
     for name, embedding in known_embeddings.items():
