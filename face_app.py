@@ -35,7 +35,7 @@ class FaceApp:
         self.camera_register_label.grid(row=3, column=0, padx=50, pady=(30,0))
 
         self.camera_register_entry = tk.Entry(root)
-        self.camera_register_entry.grid(row=4, column=0, padx=50, pady=(0,0))
+        self.camera_register_entry.grid(row=4, column=0, padx=50, pady=(0,10))
 
         self.camera_register_button = Button(master, text='Camera register', command=self.camera_register)
         self.camera_register_button.grid(row=5, column=0, padx=50, pady=(0,10))
@@ -46,7 +46,7 @@ class FaceApp:
         self.manual_label = Label(text='Manual registration/ recognition')
         self.manual_label.grid(row=0, column=30, padx=50, pady=50)
 
-        self.pic_entry_label = Label(text='Enter name of the user')
+        self.pic_entry_label = Label(text='Enter the name of the user')
         self.pic_entry_label.grid(row=1, column=30, padx=50, pady=0)
 
         self.pic_entry = tk.Entry(root)
@@ -62,12 +62,15 @@ class FaceApp:
         self.recognize_button.grid(row=5, column=30, padx=50, pady=0)
 
         self.result_label = Label(master, text="")
-        self.result_label.grid()
+        self.result_label.grid(row=6, column=30, padx=50, pady=30)
 
 
     def add_user(self):
         save_dir = 'test/register'
         name = self.pic_entry.get()
+        if name == '':
+            self.pic_entry_label.config(text='Please enter the name first')
+            return
         pic_dir = filedialog.askopenfilename()
         save_pic_dir = os.path.join(save_dir, name)
         os.makedirs(save_pic_dir, exist_ok=True)
@@ -116,10 +119,12 @@ class FaceApp:
 
     def camera_register(self):
         m.eval()
+        name = self.camera_register_entry.get()
+        if name == '':
+            self.camera_register_label.config(text='Please enter the name first')
+            return
         source = self.camera_source_entry.get()
         cap = cv2.VideoCapture(f"{source}")
-        name = self.camera_register_entry.get()
-
         frame_count = 0
         process_every_n = 15
         embeddings = []
