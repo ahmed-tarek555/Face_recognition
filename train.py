@@ -34,7 +34,7 @@ def load_dataset(dataset_path):
     y = torch.tensor(y)
     return x, y, labels
 
-data, targets, labels = load_dataset('processed_train_dataset')
+data, targets, labels = load_dataset('processed_identity_dataset')
 
 m = Model(len(labels))
 

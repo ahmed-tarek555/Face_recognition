@@ -37,14 +37,16 @@ class Model(nn.Module):
                                 nn.ReLU(),
                                 nn.Linear(n_hidden, n_hidden // 2),
                                 )
-        self.classifier = nn.Linear(n_hidden // 2, n_out, bias=False)
+        self.identity = nn.Linear(n_hidden // 2, n_out, bias=False)
+
+        self.gender = nn.Linear(n_hidden//2, 2)
 
         for layer in self.fc:
             if isinstance(layer, nn.Linear):
                 layer.bias.data.zero_()
                 layer.weight.data *= 0.1
 
-    def forward(self, x, y=None):
+    def forward(self, x, id=None, gender=None):
         iden = x
         x = self.conv(x)
         iden = self.projection(iden)
@@ -53,14 +55,20 @@ class Model(nn.Module):
         x = x.reshape(A, -1)
         x = self.fc(x)
         embeddings = x
-        logits = self.classifier(x)
+        id_logits = self.identity(x)
+        gender_logits = self.gender(x)
+        probs = F.softmax(gender_logits, 1)
 
-        if y is not None:
+        if id is not None:
             # loss = -probs[range(0, probs.shape[0]), y].log().mean()
-            loss = F.cross_entropy(logits, y)
-            return loss, embeddings
-        else:
-            return embeddings
+            loss = F.cross_entropy(id_logits, id)
+            return loss
+        if gender is not None:
+            loss = F.cross_entropy(gender_logits, gender)
+            return loss
+
+        return embeddings, probs
+
 
     def _train(self, data, targets, n_iter, lr):
         self.train()
