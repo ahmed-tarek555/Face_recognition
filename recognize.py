@@ -27,10 +27,10 @@ def load_known_embeddings(path):
         known_embeddings[person_name] = embedding
     return known_embeddings
 
-known_embeddings = load_known_embeddings('known_embeddings')
 
 
 def recognize(pic):
+    known_embeddings = load_known_embeddings('known_embeddings')
     m.eval()
     best_match = None
     best_distance = float('inf')
