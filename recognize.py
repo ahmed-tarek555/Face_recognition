@@ -52,6 +52,6 @@ def recognize(pic):
     gender = gender_labels[idx]
     return best_match, gender
 
-img = os.listdir('test/test_faces/being_tested')[0]
-best_match, gender = recognize(f'test/test_faces/being_tested/{img}')
-print(f'This person is {best_match} and they are a {gender}')
+# img = os.listdir('test/test_faces/being_tested')[0]
+# best_match, gender = recognize(f'test/test_faces/being_tested/{img}')
+# print(f'This person is {best_match} and they are a {gender}')
