@@ -105,7 +105,7 @@ class Model(nn.Module):
 
 if __name__ == "__main__":
     m = Model(105)
-    m.load_state_dict(torch.load('parameters.pth'))
+    m.load_state_dict(torch.load('identity_gender_model.pth'))
 
 
 with torch.no_grad():

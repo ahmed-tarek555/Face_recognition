@@ -44,5 +44,5 @@ m = Model(len(id_labels))
 m._train(10000,  1e-3, id_data, id_targets, gender_data, gender_targets)
 
 
-path = 'identity_gender_model.pth'
-torch.save(m.state_dict(), path)
+# path = 'identity_gender_model.pth'
+# torch.save(m.state_dict(), path)
