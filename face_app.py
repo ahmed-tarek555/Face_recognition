@@ -9,11 +9,11 @@ from PIL import Image
 from facenet_pytorch import MTCNN
 from recognize import recognize
 from store_embeddings import store_embeddings
-from utils import get_embedding
+from utils import get_embedding_probs
 from model import Model
 
 m = Model(105)
-m.load_state_dict(torch.load('parameters.pth'))
+m.load_state_dict(torch.load('identity_gender_model.pth'))
 mtcnn = MTCNN(image_size=128)
 
 
@@ -84,14 +84,14 @@ class FaceApp:
         file_path = filedialog.askopenfilename()
         if not file_path:
             return
-        name = recognize(file_path)
+        name, gender = recognize(file_path)
         if name is None:
             self.result_label.config(text="Couldn't detect a face")
         else:
-            self.result_label.config(text=f"{name}")
+            self.result_label.config(text=f"{name}-{gender}")
 
     def camera_detection(self):
-        global name
+        global name, gender
         source = self.camera_source_entry.get()
         cap = cv2.VideoCapture(f"{source}")
 
@@ -105,9 +105,9 @@ class FaceApp:
             if frame_count % process_every_n == 0:
                 rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 pic = Image.fromarray(rgb)
-                name = recognize(pic)
+                name, gender = recognize(pic)
 
-            cv2.putText(frame, name, (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            cv2.putText(frame, f'{name}-{gender}', (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
             cv2.imshow("Video Face Recognition", frame)
             frame_count += 1
@@ -138,7 +138,8 @@ class FaceApp:
                 pic = Image.fromarray(rgb)
 
                 if mtcnn(pic) is not None:
-                    embeddings.append(get_embedding(pic, m))
+                    embedding, probs = get_embedding_probs(pic, m)
+                    embeddings.append(embedding)
 
 
             if len(embeddings) == 5:

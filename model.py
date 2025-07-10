@@ -3,7 +3,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 import os
 from facenet_pytorch import MTCNN
-from utils import get_embedding
+from utils import get_embedding_probs
 
 # CONVOLUTIONAL LAYER FORMULA: [(in−K+2P)/S]+1
 
@@ -70,17 +70,25 @@ class Model(nn.Module):
         return embeddings, probs
 
 
-    def _train(self, data, targets, n_iter, lr):
+    def _train(self, n_iter, lr, iden_data=None, iden_targets=None, gender_data=None, gender_targets=None):
+        global loss
         self.train()
         optim = torch.optim.AdamW(self.parameters(), lr)
         current_iter = 0
         for i in range(n_iter):
-            batch = torch.randint(0, data.shape[0], (batch_size,))
-            x = data[batch]
-            y = targets[batch]
+            if i % 2 == 0:
+                batch = torch.randint(0, iden_data.shape[0], (batch_size,))
+                x = iden_data[batch]
+                y = iden_targets[batch]
+                loss = self(x, id=y, gender=None)
+                print(f'iden loss is:{loss}')
 
-            # forward pass
-            loss, embeddings = self(x, y)
+            elif i % 2 != 0:
+                batch = torch.randint(0, gender_data.shape[0], (batch_size,))
+                x = gender_data[batch]
+                y = gender_targets[batch]
+                loss = self(x,id=None, gender=y)
+                print(f'gender loss is:{loss}')
 
             # backward pass
             optim.zero_grad()
@@ -124,7 +132,7 @@ def get_eval_embeddings(path, pic_index):
 
         filename = os.listdir(person_dir)[pic_index]
         pic = os.path.join(person_dir, filename)
-        img_embedding = get_embedding(pic, m)
+        img_embedding, probs = get_embedding_probs(pic, m)
         if img_embedding is None:
             continue
         else:

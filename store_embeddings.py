@@ -2,13 +2,13 @@ import os
 import torch
 import torch.nn.functional as F
 from model import Model
-from utils import get_embedding
+from utils import get_embedding_probs
 from facenet_pytorch import MTCNN
 
 target_format = 'RGB'
 mtcnn = MTCNN(image_size=128)
 m = Model(105)
-m.load_state_dict(torch.load('parameters.pth'))
+m.load_state_dict(torch.load('identity_gender_model.pth'))
 
 
 def store_embeddings(path, save_dir="known_embeddings"):
@@ -24,7 +24,7 @@ def store_embeddings(path, save_dir="known_embeddings"):
         filenames = sorted(os.listdir(person_dir))
         for filename in filenames:
             pic = os.path.join(person_dir, filename)
-            img_embedding = get_embedding(pic, m)
+            img_embedding, probs = get_embedding_probs(pic, m)
             if img_embedding is None:
                 continue
             embeddings.append(img_embedding)

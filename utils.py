@@ -21,11 +21,11 @@ def process_img(path):
 
     return img
 
-def get_embedding(pic, model):
+def get_embedding_probs(pic, model):
     img = process_img(pic)
     if img is None:
-        return None
+        return None, None
     img = torch.stack((img,), dim=0)
-    img_embedding = model(img)
+    img_embedding, probs = model(img)
     img_embedding = img_embedding.squeeze(0)
-    return F.normalize(img_embedding, dim=0)
+    return F.normalize(img_embedding, dim=0), probs
