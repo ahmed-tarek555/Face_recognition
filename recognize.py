@@ -12,7 +12,7 @@ target_format = 'RGB'
 dataset_path = 'data_set'
 mtcnn = MTCNN(image_size=128)
 m = Model(105)
-m.load_state_dict(torch.load('identity_gender_model.pth'))
+m.load_state_dict(torch.load('models/identity_gender_model.pth'))
 
 
 def load_known_embeddings(path):

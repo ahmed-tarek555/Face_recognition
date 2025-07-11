@@ -23,4 +23,4 @@ def preprocess_and_save(raw_dir, save_dir):
                 torch.save(face, save_path)
     print('Done')
 
-preprocess_and_save('gender_dataset', 'processed_gender_dataset')
+preprocess_and_save('data/gender_dataset', 'processed_data/processed_gender_dataset')

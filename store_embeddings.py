@@ -8,7 +8,7 @@ from facenet_pytorch import MTCNN
 target_format = 'RGB'
 mtcnn = MTCNN(image_size=128)
 m = Model(105)
-m.load_state_dict(torch.load('identity_gender_model.pth'))
+m.load_state_dict(torch.load('models/identity_gender_model.pth'))
 
 
 def store_embeddings(path, save_dir="known_embeddings"):
@@ -35,5 +35,3 @@ def store_embeddings(path, save_dir="known_embeddings"):
         embedding_file = os.path.join(person_embedding_dir, f"{person_name}.pt")
         torch.save(ave_embedding, embedding_file)
         print('Done')
-
-# store_embeddings('test/register')

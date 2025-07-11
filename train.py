@@ -34,8 +34,8 @@ def load_dataset(dataset_path):
     y = torch.tensor(y)
     return x, y, labels
 
-id_data, id_targets, id_labels = load_dataset('processed_identity_dataset')
-gender_data, gender_targets, gender_labels = load_dataset('processed_gender_dataset')
+id_data, id_targets, id_labels = load_dataset('processed_data/processed_identity_dataset')
+gender_data, gender_targets, gender_labels = load_dataset('processed_data/processed_gender_dataset')
 
 print(gender_data.shape, gender_targets.shape, gender_labels)
 
@@ -44,5 +44,5 @@ m = Model(len(id_labels))
 m._train(10000,  1e-3, id_data, id_targets, gender_data, gender_targets)
 
 
-# path = 'identity_gender_model.pth'
+# path = 'models/'
 # torch.save(m.state_dict(), path)

@@ -105,7 +105,7 @@ class Model(nn.Module):
 
 if __name__ == "__main__":
     m = Model(105)
-    m.load_state_dict(torch.load('identity_gender_model.pth'))
+    m.load_state_dict(torch.load('models/identity_gender_model.pth'))
 
 
 with torch.no_grad():
@@ -141,7 +141,7 @@ def get_eval_embeddings(path, pic_index):
 
 def main():
     print(f'Number of parameters is: {sum(p.numel() for p in m.parameters())}')
-    print(f'evaluation loss is {eval_loss("eval")}')
+    print(f'evaluation loss is {eval_loss("data/eval")}')
 
 if __name__ == "__main__":
     main()
