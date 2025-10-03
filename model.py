@@ -1,17 +1,12 @@
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
-import os
-from facenet_pytorch import MTCNN
-from utils import get_embedding_probs
+from proj_utils import eval_loss, batch_size, device
 
+parameters_file = 'models/parameters.pth'
 # CONVOLUTIONAL LAYER FORMULA: [(in−K+2P)/S]+1
 
-batch_size = 32
-n_hidden = 200
-target_size = (128, 128)
-target_format = 'RGB'
-mtcnn = MTCNN(image_size=128)
+n_hidden = 256
 
 def conv_block(in_channels, out_channels, kernel_size, stride=1, padding=0):
     return nn.Sequential(nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding),
@@ -39,7 +34,7 @@ class Model(nn.Module):
                                 )
         self.identity = nn.Linear(n_hidden // 2, n_out, bias=False)
 
-        self.gender = nn.Linear(n_hidden//2, 2)
+        self.gender = nn.Linear(n_hidden//2, 2, bias=False)
 
         for layer in self.fc:
             if isinstance(layer, nn.Linear):
@@ -101,47 +96,13 @@ class Model(nn.Module):
             print(loss)
             current_iter += 1
             print(int((current_iter/n_iter)*100))
-        self.eval()
-
-if __name__ == "__main__":
-    m = Model(105)
-    m.load_state_dict(torch.load('models/identity_gender_model.pth'))
-
-
-with torch.no_grad():
-    def eval_loss(path):
-        m.eval()
-        distances = []
-        embeddings1 = get_eval_embeddings(path, 0)
-        embeddings2 = get_eval_embeddings(path, 1)
-        embeddings = list(zip(embeddings1.values(), embeddings2.values()))
-        for emb1, emb2 in embeddings:
-            distances.append(torch.norm(emb1 - emb2))
-        loss = sum(distances) / len(distances)
-        return loss
-
-
-def get_eval_embeddings(path, pic_index):
-    m.eval()
-    embeddings = {}
-
-    for person_name in sorted(os.listdir(path)):
-        person_dir = os.path.join(path, person_name)
-        if not os.path.isdir(person_dir):
-            continue
-
-        filename = os.listdir(person_dir)[pic_index]
-        pic = os.path.join(person_dir, filename)
-        img_embedding, probs = get_embedding_probs(pic, m)
-        if img_embedding is None:
-            continue
-        else:
-            embeddings[person_name] = img_embedding
-    return embeddings
 
 def main():
+    m = Model(105)
+    m.load_state_dict(torch.load(parameters_file))
+    m.eval()
     print(f'Number of parameters is: {sum(p.numel() for p in m.parameters())}')
-    print(f'evaluation loss is {eval_loss("data/eval")}')
+    print(f'evaluation loss is {eval_loss(m, "data/eval")}')
 
 if __name__ == "__main__":
     main()

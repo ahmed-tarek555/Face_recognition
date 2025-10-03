@@ -1,14 +1,10 @@
 import torch
 import os
-from facenet_pytorch import MTCNN
-from model import Model
+from model import Model, parameters_file
+from proj_utils import get_batch, device
 
-batch_size = 32
-n_hidden = 200
-target_size = (128, 128)
-target_format = 'RGB'
-dataset_path = 'data_set'
-mtcnn = MTCNN(image_size=128)
+lr = 3e-4
+n_iter = 10000
 
 def load_dataset(dataset_path):
     x = []
@@ -37,12 +33,33 @@ def load_dataset(dataset_path):
 id_data, id_targets, id_labels = load_dataset('processed_data/processed_identity_dataset')
 gender_data, gender_targets, gender_labels = load_dataset('processed_data/processed_gender_dataset')
 
-print(gender_data.shape, gender_targets.shape, gender_labels)
-
 m = Model(len(id_labels))
+m = m.to(device)
 
-m._train(10000,  1e-3, id_data, id_targets, gender_data, gender_targets)
+global loss
+m.train()
+optim = torch.optim.AdamW(m.parameters(), lr)
+current_iter = 0
+for i in range(n_iter):
+    if i % 2 == 0:
+        x, y = get_batch(id_data, id_targets)
+        x = x.to(device)
+        y = y.to(device)
+        loss = m(x, id=y, gender=None)
+        print(f'iden loss is:{loss}')
 
+    elif i % 2 != 0:
+        x, y = get_batch(gender_data, gender_targets)
+        x = x.to(device)
+        y = y.to(device)
+        loss = m(x, id=None, gender=y)
+        print(f'gender loss is:{loss}')
 
-# path = 'models/'
-# torch.save(m.state_dict(), path)
+    optim.zero_grad()
+    loss.backward()
+    optim.step()
+    print(loss)
+    current_iter += 1
+    print(int((current_iter / n_iter) * 100))
+
+torch.save(m.state_dict(), parameters_file)

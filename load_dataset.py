@@ -1,10 +1,7 @@
 import torch
-from facenet_pytorch import MTCNN
 import os
-from utils import process_img
+from proj_utils import process_img
 
-target_format = 'RGB'
-mtcnn = MTCNN(image_size=128)
 
 def preprocess_and_save(raw_dir, save_dir):
     os.makedirs(save_dir, exist_ok=True)

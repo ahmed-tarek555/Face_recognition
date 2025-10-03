@@ -1,19 +1,8 @@
 import torch
 import os
-from facenet_pytorch import MTCNN
-from model import Model
-from utils import get_embedding_probs
+from proj_utils import get_embedding_probs
 
 gender_labels = ['Female', 'Male']
-batch_size = 32
-n_hidden = 200
-target_size = (128, 128)
-target_format = 'RGB'
-dataset_path = 'data_set'
-mtcnn = MTCNN(image_size=128)
-m = Model(105)
-m.load_state_dict(torch.load('models/identity_gender_model.pth'))
-
 
 def load_known_embeddings(path):
     known_embeddings = {}
@@ -28,9 +17,7 @@ def load_known_embeddings(path):
         known_embeddings[person_name] = embedding
     return known_embeddings
 
-
-
-def recognize(pic):
+def recognize(m, pic):
     m.eval()
     known_embeddings = load_known_embeddings('known_embeddings')
     best_match = None
